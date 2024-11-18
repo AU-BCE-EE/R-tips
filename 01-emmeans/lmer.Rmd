@@ -1,0 +1,130 @@
+---
+title: 'Marginal means with lmer'
+output: pdf_document
+classoption: landscape
+author: Sasha D. Hafner
+date: "`r format(Sys.time(), '%d %B, %Y %h:%m')`"
+---
+
+# Summary
+Just confirming that emmeans does what I think it does with mixed-effects models without balance.
+
+# 0. Packages
+
+```{r}
+library(lme4)
+library(emmeans)
+library(data.table)
+```
+
+```{r}
+source('dfcombos.R')
+```
+
+
+
+# 1. Data
+
+Five levels of a random effect.
+
+```{r}
+rv <- data.table(rv = factor(letters[1:5]), re = -2:2)
+rv
+```
+
+(Hmm, should probably try with a mean different from 0.)
+
+Three treatments make up a fixed effect.
+
+```{r}
+ff <- data.table(trt = factor(letters[1:3]), fe = c(-1, 0, 1))
+```
+
+Combine.
+
+```{r}
+d0 <- dfcombos(rv, ff)
+```
+
+Eliminate balance.
+
+```{r}
+d0 <- d0[-c(9:10, 12:14), ]
+d0
+table(d0$trt)
+table(d0$rv)
+```
+
+Add response variable
+
+```{r}
+setDT(d0)
+d0[, y := re + fe + rnorm(nrow(d0), sd = 0.2)]
+d0
+```
+
+# 2. Model
+
+```{r}
+m1 <- lmer(y ~ trt + (1|rv), data = d0)
+summary(m1)
+emmeans(m1, 'trt')
+```
+
+Compare to mean by treatment.
+
+```{r}
+d0[, mean(y), by = trt]
+```
+
+# 3. Higher n
+
+Instead of running this many times, I'll just increase the sample size.
+
+```{r}
+d1 <- d0[rep(1:nrow(d0), each = 300), ]
+table(d1$trt)
+```
+
+And recreate `y` values.
+
+```{r}
+set.seed(1)
+d1[, y := re + fe + rnorm(nrow(d1), sd = 0.2)]
+d1
+```
+
+```{r}
+m2 <- lmer(y ~ trt + (1|rv), data = d1)
+summary(m2)
+emmeans(m2, 'trt')
+```
+
+Compare to mean by treatment.
+
+```{r}
+d1[, mean(y), by = trt]
+```
+
+Notice that `lmer` coefficients (`Estimate`) and marginal means look identical.
+
+# Conclusion
+The emmeans package seems to be a simple way to get marginal means from mixed-effects models.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
